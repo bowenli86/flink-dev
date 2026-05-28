@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static org.apache.flink.python.PythonOptions.PYTHON_EMBEDDED_OPERATOR_CALL_TIMEOUT;
 import static org.apache.flink.python.env.AbstractPythonEnvironmentManager.PYTHON_WORKING_DIR;
 
 /**
@@ -55,6 +56,8 @@ public abstract class AbstractEmbeddedPythonFunctionOperator<OUT>
     /** Every operator will hold the only python interpreter. */
     protected transient PythonInterpreter interpreter;
 
+    private transient EmbeddedPythonOperationWatchdog embeddedPythonOperationWatchdog;
+
     public AbstractEmbeddedPythonFunctionOperator(Configuration config) {
         super(config);
     }
@@ -62,6 +65,11 @@ public abstract class AbstractEmbeddedPythonFunctionOperator<OUT>
     @Override
     public void open() throws Exception {
         super.open();
+        embeddedPythonOperationWatchdog =
+                new EmbeddedPythonOperationWatchdog(
+                        config.get(PYTHON_EMBEDDED_OPERATOR_CALL_TIMEOUT),
+                        cause -> getContainingTask().getEnvironment().failExternally(cause),
+                        LOG);
         pythonEnvironmentManager = createPythonEnvironmentManager();
         pythonEnvironmentManager.open();
 
@@ -130,7 +138,13 @@ public abstract class AbstractEmbeddedPythonFunctionOperator<OUT>
                 pythonEnvironmentManager.close();
             }
         } finally {
-            super.close();
+            try {
+                if (embeddedPythonOperationWatchdog != null) {
+                    embeddedPythonOperationWatchdog.close();
+                }
+            } finally {
+                super.close();
+            }
         }
     }
 
@@ -148,6 +162,13 @@ public abstract class AbstractEmbeddedPythonFunctionOperator<OUT>
     @Override
     protected void invokeFinishBundle() throws Exception {
         // TODO: Support batches invoking.
+    }
+
+    protected final AutoCloseable monitorEmbeddedPythonOperation(String operationName) {
+        if (embeddedPythonOperationWatchdog == null) {
+            return () -> {};
+        }
+        return embeddedPythonOperationWatchdog.watch(operationName);
     }
 
     /** Setup method for Python Interpreter. */

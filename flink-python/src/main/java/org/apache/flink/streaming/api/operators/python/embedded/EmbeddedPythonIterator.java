@@ -20,6 +20,7 @@ package org.apache.flink.streaming.api.operators.python.embedded;
 
 import org.apache.flink.annotation.Internal;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
@@ -59,15 +60,29 @@ public final class EmbeddedPythonIterator implements AutoCloseable {
     }
 
     public boolean hasNext() throws Exception {
-        return (boolean) hasNextMethod.invoke(iterator);
+        return (boolean) invoke(hasNextMethod);
     }
 
     public Object next() throws Exception {
-        return nextMethod.invoke(iterator);
+        return invoke(nextMethod);
     }
 
     @Override
     public void close() throws Exception {
-        closeMethod.invoke(iterator);
+        invoke(closeMethod);
+    }
+
+    private Object invoke(Method method) throws Exception {
+        try {
+            return method.invoke(iterator);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception) {
+                throw (Exception) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw new RuntimeException(cause);
+        }
     }
 }

@@ -150,12 +150,13 @@ public abstract class AbstractOneInputEmbeddedPythonFunctionOperator<IN, OUT>
         timestamp = element.getTimestamp();
 
         IN value = element.getValue();
-        try (EmbeddedPythonIterator results =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod(
-                                "operation",
-                                "process_element",
-                                inputDataConverter.toExternal(value)))) {
+        try (AutoCloseable ignored = monitorEmbeddedPythonOperation("operation.process_element");
+                EmbeddedPythonIterator results =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "operation",
+                                        "process_element",
+                                        inputDataConverter.toExternal(value)))) {
             while (results.hasNext()) {
                 OUT result = outputDataConverter.toInternal(results.next());
                 collector.collect(result);

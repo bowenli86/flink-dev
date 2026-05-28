@@ -141,16 +141,18 @@ public class EmbeddedPythonWindowOperator<K, IN, OUT, W extends Window>
     private void invokeUserFunction(InternalTimer<K, W> timer) throws Exception {
         windowTimerContext.timer = timer;
 
-        try (EmbeddedPythonIterator results =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod("operation", "on_timer", timer.getTimestamp()))) {
+        try (AutoCloseable ignored = monitorEmbeddedPythonOperation("operation.on_timer");
+                EmbeddedPythonIterator results =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "operation", "on_timer", timer.getTimestamp()))) {
             while (results.hasNext()) {
                 OUT result = outputDataConverter.toInternal(results.next());
                 collector.collect(result);
             }
+        } finally {
+            windowTimerContext.timer = null;
         }
-
-        windowTimerContext.timer = null;
     }
 
     private class WindowContextImpl {

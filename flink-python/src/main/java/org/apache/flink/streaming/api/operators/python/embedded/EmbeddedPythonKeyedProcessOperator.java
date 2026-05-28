@@ -141,17 +141,19 @@ public class EmbeddedPythonKeyedProcessOperator<K, IN, OUT>
             throws Exception {
         onTimerContext.timeDomain = timeDomain;
         onTimerContext.timer = timer;
-        try (EmbeddedPythonIterator results =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod("operation", "on_timer", timer.getTimestamp()))) {
+        try (AutoCloseable ignored = monitorEmbeddedPythonOperation("operation.on_timer");
+                EmbeddedPythonIterator results =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "operation", "on_timer", timer.getTimestamp()))) {
             while (results.hasNext()) {
                 OUT result = outputDataConverter.toInternal(results.next());
                 collector.collect(result);
             }
+        } finally {
+            onTimerContext.timeDomain = null;
+            onTimerContext.timer = null;
         }
-
-        onTimerContext.timeDomain = null;
-        onTimerContext.timer = null;
     }
 
     private class ContextImpl {

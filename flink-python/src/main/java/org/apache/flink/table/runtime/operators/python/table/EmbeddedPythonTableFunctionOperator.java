@@ -146,12 +146,14 @@ public class EmbeddedPythonTableFunctionOperator extends AbstractEmbeddedStatele
                     userDefinedFunctionInputConverters[i].toExternal(value, udfInputOffsets[i]);
         }
 
-        try (EmbeddedPythonIterator udtfResults =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod(
-                                "table_operation",
-                                "process_element",
-                                (Object) (userDefinedFunctionInputArgs)))) {
+        try (AutoCloseable ignored =
+                        monitorEmbeddedPythonOperation("table_operation.process_element");
+                EmbeddedPythonIterator udtfResults =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "table_operation",
+                                        "process_element",
+                                        (Object) (userDefinedFunctionInputArgs)))) {
             if (udtfResults.hasNext()) {
                 do {
                     Object[] udtfResult = (Object[]) udtfResults.next();

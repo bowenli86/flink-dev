@@ -177,12 +177,13 @@ public abstract class AbstractTwoInputEmbeddedPythonFunctionOperator<IN1, IN2, O
         timestamp = element.getTimestamp();
 
         IN1 value = element.getValue();
-        try (EmbeddedPythonIterator results =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod(
-                                "operation",
-                                "process_element1",
-                                inputDataConverter1.toExternal(value)))) {
+        try (AutoCloseable ignored = monitorEmbeddedPythonOperation("operation.process_element1");
+                EmbeddedPythonIterator results =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "operation",
+                                        "process_element1",
+                                        inputDataConverter1.toExternal(value)))) {
             while (results.hasNext()) {
                 OUT result = outputDataConverter.toInternal(results.next());
                 collector.collect(result);
@@ -196,12 +197,13 @@ public abstract class AbstractTwoInputEmbeddedPythonFunctionOperator<IN1, IN2, O
         timestamp = element.getTimestamp();
 
         IN2 value = element.getValue();
-        try (EmbeddedPythonIterator results =
-                EmbeddedPythonIterator.from(
-                        interpreter.invokeMethod(
-                                "operation",
-                                "process_element2",
-                                inputDataConverter2.toExternal(value)))) {
+        try (AutoCloseable ignored = monitorEmbeddedPythonOperation("operation.process_element2");
+                EmbeddedPythonIterator results =
+                        EmbeddedPythonIterator.from(
+                                interpreter.invokeMethod(
+                                        "operation",
+                                        "process_element2",
+                                        inputDataConverter2.toExternal(value)))) {
             while (results.hasNext()) {
                 OUT result = outputDataConverter.toInternal(results.next());
                 collector.collect(result);

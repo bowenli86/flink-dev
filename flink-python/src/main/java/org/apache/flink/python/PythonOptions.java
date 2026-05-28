@@ -26,6 +26,7 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.configuration.description.Description;
 
+import java.time.Duration;
 import java.util.Map;
 
 /** Configuration options for the Python API. */
@@ -313,4 +314,18 @@ public class PythonOptions {
     @Documentation.ExcludeFromDocumentation("Internal use only. Used for local debug.")
     public static final ConfigOption<String> PYTHON_LOOPBACK_SERVER_ADDRESS =
             ConfigOptions.key("python.loopback-server.address").stringType().noDefaultValue();
+
+    @Documentation.ExcludeFromDocumentation(
+            "Internal use only. Guards embedded Python calls that execute on the task thread.")
+    public static final ConfigOption<Duration> PYTHON_EMBEDDED_OPERATOR_CALL_TIMEOUT =
+            ConfigOptions.key("python.internal.embedded.operator-call-timeout")
+                    .durationType()
+                    .defaultValue(Duration.ofMinutes(10))
+                    .withDescription(
+                            "Internal fail-fast timeout for a single embedded Python operator "
+                                    + "call, including iterator consumption and iterator close. "
+                                    + "Embedded Python calls execute through PemJa native frames on "
+                                    + "the stream task thread, so this timeout fails the task instead "
+                                    + "of allowing checkpoint barriers to be starved forever if the "
+                                    + "interpreter or iterator wedges.");
 }
